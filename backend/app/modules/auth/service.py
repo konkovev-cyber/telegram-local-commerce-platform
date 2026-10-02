@@ -14,6 +14,11 @@ class UserService:
         email: Optional[str] = None,
         password: Optional[str] = None,
         platform_role: str = "user",
+        telegram_id: Optional[int] = None,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        username: Optional[str] = None,
+        photo_url: Optional[str] = None,
     ) -> User:
         hashed = get_password_hash(password) if password else None
         user = User(
@@ -21,6 +26,11 @@ class UserService:
             email=email,
             hashed_password=hashed,
             platform_role=platform_role,
+            telegram_id=telegram_id,
+            first_name=first_name,
+            last_name=last_name,
+            username=username,
+            photo_url=photo_url,
         )
         session.add(user)
         await session.flush()
@@ -35,3 +45,44 @@ class UserService:
         stmt = select(User).where(User.email == email)
         res = await session.execute(stmt)
         return res.scalar_one_or_none()
+
+    @staticmethod
+    async def get_by_telegram_id(session: AsyncSession, telegram_id: int) -> Optional[User]:
+        stmt = select(User).where(User.telegram_id == telegram_id)
+        res = await session.execute(stmt)
+        return res.scalar_one_or_none()
+
+    @staticmethod
+    async def get_or_create_from_telegram(
+        session: AsyncSession,
+        *,
+        telegram_id: int,
+        first_name: Optional[str] = None,
+        last_name: Optional[str] = None,
+        username: Optional[str] = None,
+        photo_url: Optional[str] = None,
+    ) -> tuple[User, bool]:
+        """
+        Find user by telegram_id or create new one.
+        Returns (user, is_new_user).
+        """
+        existing = await UserService.get_by_telegram_id(session, telegram_id)
+        if existing:
+            # Update profile fields from Telegram on each login
+            existing.first_name = first_name
+            existing.last_name = last_name
+            existing.username = username
+            if photo_url:
+                existing.photo_url = photo_url
+            await session.flush()
+            return existing, False
+
+        user = await UserService.create(
+            session,
+            telegram_id=telegram_id,
+            first_name=first_name,
+            last_name=last_name,
+            username=username,
+            photo_url=photo_url,
+        )
+        return user, True
