@@ -1,4 +1,5 @@
 import os
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,9 +19,23 @@ class Settings(BaseSettings):
 
     # Security
     secret_key: str = "development-secret-key-change-in-production-min-32-chars-long"
-    token_encryption_key: str = "dGhpcy1pcy1hLTMyLWJ5dGUtZmVybmV0LWtleS1leGFtcGxlPQ=="  # 32 bytes base64 urlsafe
+    token_encryption_key: str = "vog7CBI3kEVUdhdebHkK0RSKrRb7D3ldhzFup8DBaQ4="  # 32 bytes base64 urlsafe
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24 * 7  # 7 days
+
+    @field_validator("token_encryption_key")
+    @classmethod
+    def validate_fernet_key(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("TOKEN_ENCRYPTION_KEY cannot be empty. Application refuses to start.")
+        try:
+            # Проверяем, что ключ валиден для Fernet
+            from cryptography.fernet import Fernet
+            Fernet(v.encode())
+        except Exception as e:
+            raise ValueError(f"Invalid TOKEN_ENCRYPTION_KEY for Fernet encryption: {e}")
+        return v
+
 
     # Telegram Platform Bot
     platform_bot_token: str = "1234567890:AAbbCCddEEffGGhhIIjjKKllMMnnOOppQQrr"

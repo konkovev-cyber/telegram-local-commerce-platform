@@ -40,7 +40,8 @@ backend/
         ├── test_inv_009_bot_token_encrypted.py
         ├── test_inv_010_order_outbox_atomic.py
         ├── test_inv_011_audit_on_privileged_mutation.py
-        └── test_inv_012_tenant_isolation.py
+        ├── test_inv_012_tenant_isolation.py
+        └── test_inv_013_tenant_context_authenticated_membership.py
 ```
 
 ---
@@ -861,6 +862,24 @@ async def test_inv_012_all_tenant_tables_have_shop_id(db_session):
 
 ---
 
+## INV-013: Tenant context MUST be derived from authenticated identity and verified shop membership
+
+```python
+# tests/invariants/test_inv_013_tenant_context_authenticated_membership.py
+"""
+INV-013
+Client-provided shop_id/header MUST NEVER grant tenant access.
+A valid user from Shop A cannot access Shop B by changing:
+    - X-Shop-Id header
+    - URL shop_id
+    - query parameter
+    - path parameter
+    - nested entity UUID (orders/items, products, waves, payments)
+"""
+```
+
+---
+
 ## Запуск
 
 ```bash
@@ -873,3 +892,4 @@ pytest tests/invariants/test_inv_004_no_oversell.py -v -s
 # CI — обязательно перед merge
 pytest tests/invariants/ -v --tb=long --junitxml=invariants-report.xml
 ```
+

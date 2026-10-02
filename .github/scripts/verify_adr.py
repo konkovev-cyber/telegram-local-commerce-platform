@@ -20,6 +20,11 @@ import subprocess
 import os
 import re
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8")
+
 PROTECTED_FILES = [
     "docs/architecture_freeze_v1.md",
     "docs/invariants_contract.md",
