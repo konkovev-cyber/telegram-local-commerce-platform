@@ -1,0 +1,170 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main, develop ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  adr-contract-check:
+    name: Architecture Freeze & ADR Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify Architectural Changes have approved ADR
+        run: python .github/scripts/verify_adr.py
+
+  migration-bootstrap-check:
+    name: Clean DB Bootstrap & Rollback Check
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: telegram_commerce_migration_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./backend[dev]"
+      - name: Test Clean Bootstrap -> Downgrade -> Upgrade Cycle
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/telegram_commerce_migration_test
+        run: |
+          echo "Step 1: Upgrade from empty DB to head"
+          alembic upgrade head
+          echo "Step 2: Downgrade back to base"
+          alembic downgrade base
+          echo "Step 3: Upgrade to head again (Idempotent clean apply)"
+          alembic upgrade head
+
+  invariants:
+    name: Architecture Invariants (MUST PASS)
+    runs-on: ubuntu-latest
+    needs: [adr-contract-check, migration-bootstrap-check]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: telegram_commerce_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./backend[dev]"
+      - name: Apply DB migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/telegram_commerce_test
+        run: alembic upgrade head
+      - name: Run Architecture Invariants Suite
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/telegram_commerce_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-32-chars-minimum-length
+          TOKEN_ENCRYPTION_KEY: dGhpcy1pcy1hLTMyLWJ5dGUtZmVybmV0LWtleS1leGFtcGxlPQ==
+          PLATFORM_BOT_TOKEN: 1234567890:AAbbCCddEEffGGhhIIjjKKllMMnnOOppQQrr
+          TELEGRAM_BOT_SECRET: test-bot-secret
+        run: pytest tests/invariants/ -v --tb=long --junitxml=invariants-report.xml
+
+  tests:
+    name: Backend Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: invariants
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: telegram_commerce_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e "./backend[dev]"
+      - name: Apply DB migrations
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/telegram_commerce_test
+        run: alembic upgrade head
+      - name: Run Unit & Sprint Tests
+        working-directory: backend
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/telegram_commerce_test
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: test-secret-key-32-chars-minimum-length
+          TOKEN_ENCRYPTION_KEY: dGhpcy1pcy1hLTMyLWJ5dGUtZmVybmV0LWtleS1leGFtcGxlPQ==
+          PLATFORM_BOT_TOKEN: 1234567890:AAbbCCddEEffGGhhIIjjKKllMMnnOOppQQrr
+          TELEGRAM_BOT_SECRET: test-bot-secret
+        run: pytest tests/s0/ -v --cov=app --cov-fail-under=75 --cov-report=term-missing
