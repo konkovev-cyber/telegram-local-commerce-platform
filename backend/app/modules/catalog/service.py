@@ -371,6 +371,22 @@ class CatalogService:
         return list(res.scalars().all())
 
     @staticmethod
+    async def get_variant(
+        session: AsyncSession,
+        *,
+        variant_id: uuid.UUID,
+        product_id: uuid.UUID,
+        shop_id: uuid.UUID,
+    ) -> Optional[ProductVariant]:
+        stmt = select(ProductVariant).where(
+            ProductVariant.id == variant_id,
+            ProductVariant.product_id == product_id,
+            ProductVariant.shop_id == shop_id,
+        )
+        res = await session.execute(stmt)
+        return res.scalar_one_or_none()
+
+    @staticmethod
     def handle_integrity_error(exc: IntegrityError) -> str:
         msg = str(exc.orig) if hasattr(exc, "orig") else str(exc)
         if "uq_units_shop_name" in msg or 'duplicate key value violates unique constraint "uq_units_shop_name"' in msg:
