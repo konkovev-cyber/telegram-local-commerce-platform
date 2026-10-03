@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from typing import Optional, List
 
-from sqlalchemy import String, DateTime, ForeignKey, Numeric, Text
+from sqlalchemy import String, DateTime, Date, ForeignKey, Numeric, Text, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -57,8 +57,28 @@ class Fulfillment(Base):
     __tablename__ = "fulfillments"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    shop_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("shops.id", ondelete="CASCADE"), nullable=False)
-    order_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("orders.id", ondelete="SET NULL"), nullable=True)
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
+    order_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("orders.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(String(30), nullable=False, default="unfulfilled")
+    wave_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    delivery_date: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+
+    order = relationship("Order", backref="fulfillment")
+
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('unfulfilled', 'assembling', 'ready', 'out_for_delivery', 'arrived', 'delivered')",
+            name="ck_fulfillments_status",
+        ),
+    )

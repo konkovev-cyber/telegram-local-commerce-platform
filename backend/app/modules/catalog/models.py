@@ -95,6 +95,8 @@ class Product(Base):
     sku: Mapped[str] = mapped_column(String(100), nullable=False)
     barcode: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    cost_price: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    stock_tracking: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     tags: Mapped[List[str]] = mapped_column(JSONB, nullable=False, default=list)
     created_at: Mapped[datetime] = mapped_column(
@@ -116,6 +118,7 @@ class Product(Base):
     )
 
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan", lazy="select")
+    unit = relationship("Unit", lazy="select")
 
 
 class ProductVariant(Base):
