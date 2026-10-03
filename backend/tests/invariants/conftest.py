@@ -5,34 +5,41 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy import text as sa_text
 
 from app.main import app
 from app.core.db import Base, get_db
 from app.core.config import settings
+from app.modules.orders.models import Order, OrderItem  # noqa: register models in Base.metadata
 
 TEST_DATABASE_URL = settings.database_url.replace(
     "/telegram_commerce", "/telegram_commerce_test"
 )
 
-engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-
 
 @pytest_asyncio.fixture(scope="session")
-async def setup_db():
+async def _setup_db():
+    """One-time session setup: ensure schema exists."""
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(lambda c: c.execute(sa_text("DROP SCHEMA public CASCADE")))
+        await conn.run_sync(lambda c: c.execute(sa_text("CREATE SCHEMA public")))
         await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture()
-async def db_session(setup_db) -> AsyncSession:
-    async with TestSessionLocal() as session:
+async def db_session(_setup_db) -> AsyncSession:
+    """Per-test session using fresh engine to avoid loop conflicts."""
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+    async with AsyncSessionLocal() as session:
         yield session
-        await session.rollback()
+        try:
+            await session.rollback()
+        except Exception:
+            pass
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture()

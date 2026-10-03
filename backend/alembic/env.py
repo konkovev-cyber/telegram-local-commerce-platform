@@ -14,6 +14,7 @@ from app.core.db import Base
 from app.modules.auth.models import User # noqa
 from app.modules.shops.models import Shop, ShopMember, ShopBot, PaymentAccount # noqa
 from app.modules.audit.models import AuditLog # noqa
+from app.modules.catalog.models import Unit, Category, Product, ProductVariant # noqa
 from app.core.outbox import OutboxEvent # noqa
 
 # this is the Alembic Config object, which provides

@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "telegram-commerce-backend"
+package-mode = false
 version = "0.1.0"
 description = "Telegram Local Commerce Platform Core Backend"
 readme = "README.md"
@@ -41,6 +42,7 @@ addopts = "-q"
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100

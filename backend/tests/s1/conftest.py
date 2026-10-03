@@ -1,7 +1,3 @@
-"""
-S1 test fixtures.
-Uses a separate test database, real PostgreSQL (no mocks).
-"""
 import hmac
 import hashlib
 import json
@@ -12,6 +8,7 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy import text as sa_text
 
 from app.main import app
 from app.core.db import Base, get_db
@@ -19,30 +16,34 @@ from app.core.config import settings
 from app.modules.auth.jwt import create_access_token
 from app.modules.auth.service import UserService
 from app.modules.shops.service import ShopService
+from app.modules.orders.models import Order, OrderItem  # noqa: register models in Base.metadata
 
 TEST_DATABASE_URL = settings.database_url.replace(
     "/telegram_commerce", "/telegram_commerce_test"
 )
 
-engine = create_async_engine(TEST_DATABASE_URL, echo=False)
-TestSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
-
 
 @pytest_asyncio.fixture(scope="session")
-async def setup_db():
+async def _setup_db():
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(lambda c: c.execute(sa_text("DROP SCHEMA public CASCADE")))
+        await conn.run_sync(lambda c: c.execute(sa_text("CREATE SCHEMA public")))
         await conn.run_sync(Base.metadata.create_all)
-    yield
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture()
-async def db_session(setup_db) -> AsyncSession:
-    async with TestSessionLocal() as session:
+async def db_session(_setup_db) -> AsyncSession:
+    engine = create_async_engine(TEST_DATABASE_URL, echo=False)
+    AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+    async with AsyncSessionLocal() as session:
         yield session
-        await session.rollback()
+        try:
+            await session.rollback()
+        except Exception:
+            pass
+    await engine.dispose()
 
 
 @pytest_asyncio.fixture()
@@ -58,12 +59,7 @@ async def client(db_session) -> AsyncClient:
     app.dependency_overrides.clear()
 
 
-def make_telegram_init_data(
-    user_data: dict,
-    bot_token: str = settings.platform_bot_token,
-    auth_date: int | None = None,
-) -> str:
-    """Build a valid Telegram initData string with correct HMAC."""
+def make_telegram_init_data(user_data, bot_token=settings.platform_bot_token, auth_date=None):
     if auth_date is None:
         auth_date = int(time.time())
     params = {
@@ -79,49 +75,31 @@ def make_telegram_init_data(
 
 @pytest_asyncio.fixture()
 async def user_a(db_session) -> dict:
-    """Create user A and return dict with user, token, auth_headers."""
+    telegram_id = 111111 + int(uuid.uuid4().hex[:4], 16) % 100000
     user = await UserService.create(
-        db_session,
-        telegram_id=111111,
-        first_name="Alice",
-        platform_role="user",
+        db_session, telegram_id=telegram_id, first_name="Alice", platform_role="user",
     )
     await db_session.commit()
     token = create_access_token(data={"sub": str(user.id)})
-    return {
-        "user": user,
-        "token": token,
-        "auth_headers": {"Authorization": f"Bearer {token}"},
-    }
+    return {"user": user, "token": token, "auth_headers": {"Authorization": f"Bearer {token}"}}
 
 
 @pytest_asyncio.fixture()
 async def user_b(db_session) -> dict:
-    """Create user B and return dict with user, token, auth_headers."""
+    telegram_id = 222222 + int(uuid.uuid4().hex[:4], 16) % 100000
     user = await UserService.create(
-        db_session,
-        telegram_id=222222,
-        first_name="Bob",
-        platform_role="user",
+        db_session, telegram_id=telegram_id, first_name="Bob", platform_role="user",
     )
     await db_session.commit()
     token = create_access_token(data={"sub": str(user.id)})
-    return {
-        "user": user,
-        "token": token,
-        "auth_headers": {"Authorization": f"Bearer {token}"},
-    }
+    return {"user": user, "token": token, "auth_headers": {"Authorization": f"Bearer {token}"}}
 
 
 @pytest_asyncio.fixture()
 async def shop_a(db_session, user_a) -> dict:
-    """Create shop A owned by user A."""
     shop = await ShopService.create(
-        db_session,
-        slug=f"shop-a-{uuid.uuid4().hex[:6]}",
-        name="Shop A",
-        owner_id=user_a["user"].id,
-        currency="RUB",
+        db_session, slug=f"shop-a-{uuid.uuid4().hex[:6]}", name="Shop A",
+        owner_id=user_a["user"].id, currency="RUB",
     )
     await db_session.commit()
     return {"shop": shop}
@@ -129,13 +107,9 @@ async def shop_a(db_session, user_a) -> dict:
 
 @pytest_asyncio.fixture()
 async def shop_b(db_session, user_b) -> dict:
-    """Create shop B owned by user B."""
     shop = await ShopService.create(
-        db_session,
-        slug=f"shop-b-{uuid.uuid4().hex[:6]}",
-        name="Shop B",
-        owner_id=user_b["user"].id,
-        currency="USD",
+        db_session, slug=f"shop-b-{uuid.uuid4().hex[:6]}", name="Shop B",
+        owner_id=user_b["user"].id, currency="USD",
     )
     await db_session.commit()
     return {"shop": shop}
