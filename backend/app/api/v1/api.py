@@ -7,7 +7,8 @@ from app.modules.catalog.price_router import admin_price_router, catalog_router 
 from app.modules.inventory.router import router as inventory_router
 from app.modules.geo.router import router as geo_router
 from app.modules.waves.router import router as waves_router
-from app.modules.orders.router import router as orders_router, customer_router
+from app.modules.orders.router import router as orders_router, customer_router as orders_customer_router
+from app.modules.payments.router import router as payments_router, customer_router as payments_customer_router, handle_webhook
 
 api_router = APIRouter()
 api_router.include_router(health_router, prefix="", tags=["Health"])
@@ -20,4 +21,7 @@ api_router.include_router(inventory_router)
 api_router.include_router(geo_router)
 api_router.include_router(waves_router)
 api_router.include_router(orders_router)
-api_router.include_router(customer_router)
+api_router.include_router(orders_customer_router)
+api_router.include_router(payments_router)
+api_router.include_router(payments_customer_router)
+api_router.add_api_route("/payments/webhook/{provider}", handle_webhook, methods=["POST"], tags=["Webhooks"])

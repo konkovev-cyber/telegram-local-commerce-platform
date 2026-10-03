@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.core.outbox import emit
 from app.modules.orders.models import Order, OrderItem, OrderStatusLog
-from app.modules.payments.models import Fulfillment
+from app.modules.payments.models import PaymentTransaction, Fulfillment
 from app.modules.audit.service import write_audit
 
 

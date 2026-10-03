@@ -3,14 +3,11 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-import os
+from decimal import Decimal
 
 from app.main import app
 from app.core.db import get_db
 from app.core.config import settings
-from app.modules.orders.models import Order, OrderItem  # noqa
-from app.modules.inventory.models import InventoryItem, InventoryMovement, InventoryReservation  # noqa
-from app.modules.payments.models import Payment, PaymentTransaction, WebhookEvent  # noqa
 
 TEST_DATABASE_URL = settings.database_url.replace(
     "/telegram_commerce", "/telegram_commerce_test"
@@ -92,22 +89,56 @@ async def shop_b(client, user_b) -> dict:
 
 
 @pytest_asyncio.fixture()
-async def shop_and_owner(db_session):
-    from app.modules.shops.service import ShopService
-    from app.modules.auth.service import UserService
-    owner = await UserService.create(db_session, email=f"owner_{uuid.uuid4().hex[:8]}@test.com", password="testpass123", platform_role="user")
-    shop = await ShopService.create(db_session, slug=f"test-shop-{uuid.uuid4().hex[:8]}", name="Test Shop", owner_id=owner.id, currency="RUB")
-    await db_session.commit()
-    return shop, owner
+async def zone_a(client, user_a, shop_a) -> dict:
+    headers = {**user_a["auth_headers"], "X-Shop-Id": str(shop_a["shop_id"])}
+    slug = f"zone-{uuid.uuid4().hex[:6]}"
+    resp = await client.post("/api/v1/admin/geo/zones", headers=headers, json={"name": "Center", "slug": slug})
+    assert resp.status_code == 201
+    zone = resp.json()
+    return {"zone_id": uuid.UUID(zone["id"]), "zone": zone}
 
 
 @pytest_asyncio.fixture()
-async def product_with_inventory(db_session, shop_and_owner):
+async def wave_a(client, user_a, shop_a, zone_a) -> dict:
+    from datetime import date, datetime, timezone, timedelta
+    headers = {**user_a["auth_headers"], "X-Shop-Id": str(shop_a["shop_id"])}
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    resp = await client.post("/api/v1/admin/waves", headers=headers, json={
+        "zone_id": str(zone_a["zone_id"]),
+        "delivery_date": tomorrow,
+        "delivery_from": "10:00",
+        "delivery_to": "20:00",
+        "closes_at": (datetime.now(timezone.utc) + timedelta(hours=6)).isoformat(),
+    })
+    assert resp.status_code == 201, f"Wave create failed: {resp.text}"
+    wave = resp.json()
+    return {"wave_id": uuid.UUID(wave["id"]), "wave": wave}
+
+
+@pytest_asyncio.fixture()
+async def product_with_inventory(db_session, shop_a) -> tuple:
     from app.modules.catalog.service import CatalogService
     from app.modules.inventory.service import InventoryService
-    shop, owner = shop_and_owner
-    product = await CatalogService.create_product(db_session, shop_id=shop.id, name="Inv Product", slug=f"inv-{uuid.uuid4().hex[:8]}", sku=f"INV-{uuid.uuid4().hex[:8]}")
+    from sqlalchemy import select
+    from app.modules.catalog.models import Unit
+
+    stmt = select(Unit).where(Unit.shop_id == shop_a["shop_id"]).limit(1)
+    res = await db_session.execute(stmt)
+    unit = res.scalar_one_or_none()
+    if not unit:
+        unit = await CatalogService.create_unit(db_session, shop_id=shop_a["shop_id"], name=" шт", short_name=" шт")
+        await db_session.flush()
+
+    product = await CatalogService.create_product(
+        db_session, shop_id=shop_a["shop_id"],
+        name="S6 Test Product", slug=f"s6prod-{uuid.uuid4().hex[:8]}",
+        sku=f"S6PROD-{uuid.uuid4().hex[:8]}", unit_id=unit.id,
+    )
     await db_session.flush()
-    inventory = await InventoryService.initialize(db_session, shop_id=shop.id, product_id=product.id, initial_qty=__import__('decimal').Decimal("30.000"), created_by=owner.id)
+
+    inventory = await InventoryService.initialize(
+        db_session, shop_id=shop_a["shop_id"], product_id=product.id,
+        initial_qty=Decimal("100"),
+    )
     await db_session.commit()
-    return product, inventory, shop, owner
+    return product, inventory

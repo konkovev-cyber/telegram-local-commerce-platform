@@ -12,7 +12,7 @@ from app.core.db import get_db
 from app.core.config import settings
 from app.modules.orders.models import Order, OrderItem  # noqa
 from app.modules.inventory.models import InventoryItem, InventoryMovement, InventoryReservation  # noqa
-from app.modules.payments.models import Payment, PaymentTransaction, WebhookEvent, Fulfillment  # noqa
+from app.modules.payments.models import Payment, PaymentTransaction, WebhookEvent  # noqa
 
 TEST_DATABASE_URL = settings.database_url.replace(
     "/telegram_commerce", "/telegram_commerce_test"
