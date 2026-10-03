@@ -17,7 +17,7 @@ class CatalogService:
         name: str,
         short_name: str,
     ) -> Unit:
-        unit = Unit(id=uuid.uuid4(), shop_id=shop_id, name=name, short_name=short_name)
+        unit = Unit(id=uuid.uuid4(), shop_id=shop_id, name=name, short=short_name, short_name=short_name)
         session.add(unit)
         await session.flush()
         return unit

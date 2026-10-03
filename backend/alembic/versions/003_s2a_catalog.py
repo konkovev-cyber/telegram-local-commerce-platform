@@ -49,17 +49,16 @@ def upgrade() -> None:
         unique=True,
         postgresql_where=sa.text("barcode IS NOT NULL"),
     )
-    # Convert tags from text[] to jsonb via a temp column
     conn = op.get_bind()
     conn.execute(sa.text("ALTER TABLE products ADD COLUMN tags_new jsonb NOT NULL DEFAULT '[]'::jsonb"))
     conn.execute(sa.text("UPDATE products SET tags_new = to_jsonb(tags)::jsonb"))
     conn.execute(sa.text("ALTER TABLE products DROP COLUMN tags"))
     conn.execute(sa.text("ALTER TABLE products RENAME COLUMN tags_new TO tags"))
-    # Enforce NOT NULL on sku (was nullable in S0)
     conn.execute(sa.text("UPDATE products SET sku = '' WHERE sku IS NULL"))
     op.execute("ALTER TABLE products ALTER COLUMN sku SET NOT NULL")
 
-    # ── product_variants: add indexes, enforce sku NOT NULL ──
+    # ── product_variants: add unique SKU constraint, indexes, enforce sku NOT NULL ──
+    op.create_unique_constraint("uq_variants_shop_sku", "product_variants", ["shop_id", "sku"])
     op.create_index("ix_product_variants_shop_id", "product_variants", ["shop_id"])
     op.create_index("ix_product_variants_product_id", "product_variants", ["product_id"])
     op.create_index(
@@ -75,6 +74,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("ALTER TABLE product_variants ALTER COLUMN sku DROP NOT NULL")
+    op.drop_constraint("uq_variants_shop_sku", "product_variants", type_="unique")
     op.drop_index("uq_variants_shop_barcode", table_name="product_variants")
     op.drop_index("ix_product_variants_product_id", table_name="product_variants")
     op.drop_index("ix_product_variants_shop_id", table_name="product_variants")
@@ -82,7 +82,6 @@ def downgrade() -> None:
     op.drop_index("ix_products_shop_id", table_name="products")
     op.drop_constraint("uq_products_shop_slug", "products", type_="unique")
     op.drop_column("products", "slug")
-    # Revert tags: jsonb → text[] via temp column
     conn = op.get_bind()
     conn.execute(sa.text("ALTER TABLE products ADD COLUMN tags_old text[]"))
     conn.execute(sa.text("UPDATE products SET tags_old = (SELECT array_agg(x::text) FROM jsonb_array_elements(tags) AS x)"))

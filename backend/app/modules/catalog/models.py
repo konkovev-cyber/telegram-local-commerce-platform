@@ -19,6 +19,7 @@ class Unit(Base):
         index=True,
     )
     name: Mapped[str] = mapped_column(String(50), nullable=False)
+    short: Mapped[str] = mapped_column(String(20), nullable=False, default="")
     short_name: Mapped[str] = mapped_column(String(10), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
