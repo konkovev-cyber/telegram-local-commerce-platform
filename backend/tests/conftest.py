@@ -14,26 +14,26 @@ TEST_DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/teleg
 @pytest.fixture(scope="session", autouse=True)
 def _schema_setup():
     """Reset test database and apply migrations once before any test."""
-    # Drop and recreate test database (idempotent)
-    subprocess.run(
+    import subprocess as _sp
+    # Terminate existing connections
+    _sp.run(
         ["docker", "exec", "kvartal_postgres", "psql", "-U", "postgres",
          "-c", "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname='telegram_commerce_test' AND pid <> pg_backend_pid()"],
-        capture_output=True,  # ignore errors (no connections yet)
+        capture_output=True,
     )
-    subprocess.run(
+    _sp.run(
         ["docker", "exec", "kvartal_postgres", "psql", "-U", "postgres",
          "-c", "DROP DATABASE IF EXISTS telegram_commerce_test"],
-        capture_output=True, check=True,
+        capture_output=True,
     )
-    subprocess.run(
+    _sp.run(
         ["docker", "exec", "kvartal_postgres", "psql", "-U", "postgres",
          "-c", "CREATE DATABASE telegram_commerce_test"],
         capture_output=True, check=True,
     )
-    # Apply all migrations
     env = os.environ.copy()
     env["DATABASE_URL"] = TEST_DATABASE_URL
-    result = subprocess.run(
+    result = _sp.run(
         ["poetry", "run", "alembic", "upgrade", "head"],
         capture_output=True, text=True, env=env,
         cwd="/root/telegram-local-commerce-platform/backend",
@@ -42,7 +42,6 @@ def _schema_setup():
         raise RuntimeError(f"Alembic upgrade failed:\n{result.stderr}")
 
 
-# Shared client fixture for S0 tests that don't define their own
 @pytest_asyncio.fixture()
 async def _shared_db_session():
     from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
