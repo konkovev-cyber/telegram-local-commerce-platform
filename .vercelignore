@@ -1,0 +1,6 @@
+# Backend — not needed for frontend deploy
+backend/
+infra/
+docs/
+.github/
+.kilo/
