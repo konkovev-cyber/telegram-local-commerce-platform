@@ -1,5 +1,5 @@
 {
-  "buildCommand": null,
+  "buildCommand": "mkdir -p .vercel/output && cp index.html assets/* api/* .vercel/output/ && mv .vercel/output/* . && rm -rf .vercel",
   "outputDirectory": ".",
   "framework": null,
   "rewrites": [
