@@ -2,7 +2,6 @@
   "buildCommand": null,
   "outputDirectory": ".",
   "framework": null,
-  "installCommand": null,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/proxy" },
     { "source": "/(.*)", "destination": "/index.html" }
