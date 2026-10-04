@@ -53,3 +53,7 @@ Desktop.ini
 # Logs
 logs/
 *.log
+
+# Build artifacts to exclude
+tg-miniapp-dist.tar.gz
+*.tar.gz
