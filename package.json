@@ -1,1 +1,1 @@
-{"name": "kvartal-miniapp", "version": "1.0.0", "private": true, "dependencies": {}}
+{"name": "kvartal-miniapp", "version": "1.0.0", "private": true, "dependencies": {"next": "14.2.0"}}
