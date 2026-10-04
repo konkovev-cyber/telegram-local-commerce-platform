@@ -3,6 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "echo static files are pre-built in public/"
+    "build": "node build.mjs"
   }
 }
