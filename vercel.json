@@ -1,6 +1,6 @@
 {
-  "buildCommand": "mkdir -p .vercel/output && cp index.html assets/* api/* .vercel/output/ && mv .vercel/output/* . && rm -rf .vercel",
-  "outputDirectory": ".",
+  "buildCommand": "node -e \"require('fs').mkdirSync('.vercel/output', {recursive:true}); require('fs').copyFileSync('index.html', '.vercel/output/index.html'); require('fs').cpSync('assets', '.vercel/output/assets', {recursive:true}); require('fs').cpSync('api', '.vercel/output/api', {recursive:true})\"",
+  "outputDirectory": ".vercel/output",
   "framework": null,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/proxy" },
