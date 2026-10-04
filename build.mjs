@@ -5,10 +5,10 @@ import { join } from 'path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const src = join(__dirname);
-const out = join(src, '.vercel', 'output');
+const out = '/vercel/output';
 
 mkdirSync(out, { recursive: true });
 copyFileSync(join(src, 'index.html'), join(out, 'index.html'));
 cpSync(join(src, 'assets'), join(out, 'assets'), { recursive: true });
 cpSync(join(src, 'api'), join(out, 'api'), { recursive: true });
-console.log('Copied static files to .vercel/output');
+console.log('Copied static files to /vercel/output');
