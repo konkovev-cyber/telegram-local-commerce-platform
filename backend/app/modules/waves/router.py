@@ -1,3 +1,5 @@
+import logging
+logger = logging.getLogger(__name__)
 import uuid
 from typing import Optional, List
 
@@ -135,6 +137,14 @@ async def close_wave(
         raise HTTPException(status_code=400, detail=str(e))
     if not wave:
         raise HTTPException(status_code=404, detail="Wave not found")
+
+    # Generate assembly sheet after close
+    from app.modules.fulfillment.service import FulfillmentService
+    try:
+        await FulfillmentService.generate_assembly_sheet(db, wave_id=wave.id, shop_id=shop.id)
+    except Exception as e:
+        logger.warning(f"Failed to generate assembly sheet for wave {wave_id}: {e}")
+
     await db.commit()
     return {"id": str(wave.id), "status": wave.status, "orders_count": wave.orders_count}
 

@@ -439,7 +439,7 @@ class OrderService:
 
     @staticmethod
     async def get_order_by_qr(session: AsyncSession, *, qr_code: str) -> Optional[Order]:
-        stmt = select(Order).where(Order.qr_code == qr_code)
+        stmt = select(Order).options(selectinload(Order.items)).where(Order.qr_code == qr_code)
         res = await session.execute(stmt)
         return res.scalar_one_or_none()
 

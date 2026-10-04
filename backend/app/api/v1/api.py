@@ -9,6 +9,7 @@ from app.modules.geo.router import router as geo_router
 from app.modules.waves.router import router as waves_router
 from app.modules.orders.router import router as orders_router, customer_router as orders_customer_router
 from app.modules.payments.router import router as payments_router, customer_router as payments_customer_router, handle_webhook
+from app.modules.fulfillment.router import router as fulfillment_router
 
 api_router = APIRouter()
 api_router.include_router(health_router, prefix="", tags=["Health"])
@@ -25,3 +26,4 @@ api_router.include_router(orders_customer_router)
 api_router.include_router(payments_router)
 api_router.include_router(payments_customer_router)
 api_router.add_api_route("/payments/webhook/{provider}", handle_webhook, methods=["POST"], tags=["Webhooks"])
+api_router.include_router(fulfillment_router)

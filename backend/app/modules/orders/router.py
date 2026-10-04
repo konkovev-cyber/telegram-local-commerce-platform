@@ -107,6 +107,60 @@ async def cancel_order(
     return {"id": str(order.id), "status": order.order_status}
 
 
+@router.patch("/{order_id}/fulfillment-status", response_model=dict)
+async def update_fulfillment_status(
+    order_id: str,
+    body: dict,
+    shop_context=Depends(get_shop_context),
+    db: AsyncSession = Depends(get_db),
+):
+    shop, member = shop_context
+    import uuid as _uuid
+    from app.modules.payments.models import Fulfillment
+    from sqlalchemy import select as _select
+    from datetime import datetime as _dt, timezone as _tz
+
+    order_uuid = _uuid.UUID(order_id)
+    new_status = body.get("status", "")
+
+    # Validate status transition
+    valid_transitions = {
+        "unfulfilled": {"assembling", "ready", "out_for_delivery", "arrived", "delivered"},
+        "assembling": {"ready", "assembling"},
+        "ready": {"out_for_delivery", "ready"},
+        "out_for_delivery": {"arrived", "out_for_delivery"},
+        "arrived": {"delivered", "arrived"},
+        "delivered": set(),
+    }
+    if new_status not in valid_transitions:
+        raise HTTPException(status_code=400, detail=f"Invalid status: {new_status}")
+
+    stmt = _select(Fulfillment).where(Fulfillment.order_id == order_uuid)
+    res = await db.execute(stmt)
+    fulfillment = res.scalar_one_or_none()
+    if not fulfillment:
+        # Create fulfillment if doesn't exist
+        fulfillment = Fulfillment(
+            id=_uuid.uuid4(),
+            order_id=order_uuid,
+            status="unfulfilled",
+        )
+        db.add(fulfillment)
+        await db.flush()
+
+    old_status = fulfillment.status
+    if new_status not in valid_transitions.get(old_status, set()):
+        raise HTTPException(status_code=400, detail=f"Invalid transition: {old_status} → {new_status}")
+
+    fulfillment.status = new_status
+    if new_status == "delivered":
+        fulfillment.delivered_at = _dt.now(_tz.utc)
+    fulfillment.updated_at = _dt.now(_tz.utc)
+
+    await db.commit()
+    return {"id": str(order_uuid), "fulfillment_status": fulfillment.status}
+
+
 @router.get("/{order_id}/status-log", response_model=List[dict])
 async def get_status_log(
     order_id: str,
