@@ -1,8 +1,7 @@
 {
   "buildCommand": "npm run build",
-  "outputDirectory": "/vercel/output",
+  "outputDirectory": "output",
   "framework": null,
-  "devCommand": null,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/proxy" },
     { "source": "/(.*)", "destination": "/index.html" }
