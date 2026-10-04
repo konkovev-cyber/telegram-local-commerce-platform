@@ -7,6 +7,6 @@
   "outputDirectory": ".",
   "framework": null,
   "env": {
-    "BACKEND_URL": "@backend_url"
+    "BACKEND_URL": "http://localhost:8000"
   }
 }
