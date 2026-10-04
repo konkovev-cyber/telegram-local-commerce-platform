@@ -57,3 +57,6 @@ logs/
 # Build artifacts to exclude
 tg-miniapp-dist.tar.gz
 *.tar.gz
+
+# Vercel
+.vercel/

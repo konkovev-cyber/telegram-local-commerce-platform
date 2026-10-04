@@ -1,12 +1,4 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "output",
-  "framework": null,
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/proxy" },
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "env": {
-    "BACKEND_URL": "http://localhost:8000"
-  }
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build"
 }

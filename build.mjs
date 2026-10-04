@@ -1,13 +1,30 @@
-import { mkdirSync, copyFileSync, cpSync } from 'fs';
+import { mkdirSync, copyFileSync, writeFileSync, cpSync, rmSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const root = dirname(fileURLToPath(import.meta.url));
-const out = join(root, 'output');
+const out = join(root, '.vercel', 'output');
+const staticDir = join(out, 'static');
 
-mkdirSync(join(out, 'assets'), { recursive: true });
-mkdirSync(join(out, 'api'), { recursive: true });
-copyFileSync(join(root, 'index.html'), join(out, 'index.html'));
-cpSync(join(root, 'assets'), join(out, 'assets'), { recursive: true });
-cpSync(join(root, 'api'), join(out, 'api'), { recursive: true });
-console.log('Copied static files to ./output');
+rmSync(out, { recursive: true, force: true });
+mkdirSync(join(staticDir, 'assets'), { recursive: true });
+
+copyFileSync(join(root, 'index.html'), join(staticDir, 'index.html'));
+cpSync(join(root, 'assets'), join(staticDir, 'assets'), { recursive: true });
+
+writeFileSync(
+  join(out, 'config.json'),
+  JSON.stringify(
+    {
+      version: 3,
+      routes: [
+        { handle: 'filesystem' },
+        { src: '/(.*)', dest: '/index.html' }
+      ]
+    },
+    null,
+    2
+  )
+);
+
+console.log('Build Output API: wrote .vercel/output/static + config.json');
