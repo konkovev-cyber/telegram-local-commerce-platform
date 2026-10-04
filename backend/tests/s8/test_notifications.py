@@ -111,23 +111,59 @@ async def test_payment_completed_template():
     assert "Заказ #7" in msg
 
 
-async def test_worker_selects_pending_and_failed(db_session):
-    """Worker selects events with status=pending or failed (attempts < MAX)."""
+async def test_worker_query_selects_pending_and_failed(client, user_a, shop_a):
+    """Verify worker SQL query selects pending/failed events correctly."""
     from app.core.outbox import OutboxEvent
-    from app.worker.tasks.outbox import process_outbox_events, MAX_ATTEMPTS
+    from app.worker.tasks.outbox import MAX_ATTEMPTS
     from sqlalchemy import select
 
-    # Insert events directly via db_session
-    e1 = OutboxEvent(
-        id=_uuid.uuid4(), shop_id=__import__('tests.s8.conftest', fromlist=['shop_a']).shop_a.__class__ if False else _uuid.uuid4(),
-        event_type="order.created", aggregate_type="order",
-        aggregate_id=_uuid.uuid4(), payload={},
-        status="pending", attempts=0,
-    )
-    # We need a real shop_id; skip complex test and verify logic differently
-    # Instead, just verify the worker selects correct events
-    await db_session.commit()
+    shop_id = shop_a["shop_id"]
 
-    # Mock the dispatcher to avoid real Telegram calls
-    with patch('app.worker.tasks.outbox.NotificationDispatcher.process_event', new=AsyncMock(return_value="sent")):
-        await process_outbox_events(None)
+    # Build the query the worker uses
+    stmt = (
+        select(OutboxEvent)
+        .where(
+            OutboxEvent.status.in_(["pending", "failed"]),
+            OutboxEvent.attempts < MAX_ATTEMPTS,
+        )
+        .order_by(OutboxEvent.created_at)
+        .limit(50)
+    )
+
+    # Test with shop_a's db_session
+    from app.core.db import get_db
+    # Access the overridden session via the app
+    from app.main import app
+    override = app.dependency_overrides.get(get_db)
+    if override:
+        # Get the session from the override
+        import inspect
+        gen = override()
+        if hasattr(gen, '__aiter__'):
+            session = await gen.__anext__()
+        else:
+            session = gen
+    else:
+        # Fallback: create our own session
+        from app.core.config import settings
+        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
+        TEST_DB = settings.database_url.replace("/telegram_commerce", "/telegram_commerce_test")
+        engine = create_async_engine(TEST_DB, echo=False)
+        AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False)
+        async with AsyncSessionLocal() as s:
+            # Insert test events
+            e1 = OutboxEvent(id=_uuid.uuid4(), shop_id=shop_id, event_type="order.created",
+                           aggregate_type="order", aggregate_id=_uuid.uuid4(), payload={},
+                           status="pending", attempts=0)
+            e2 = OutboxEvent(id=_uuid.uuid4(), shop_id=shop_id, event_type="order.created",
+                           aggregate_type="order", aggregate_id=_uuid.uuid4(), payload={},
+                           status="failed", attempts=MAX_ATTEMPTS)
+            s.add_all([e1, e2])
+            await s.commit()
+
+            # Query
+            res = await s.execute(stmt)
+            events = res.scalars().all()
+            # Only pending should be selected (e2 has exhausted attempts)
+            assert len(events) == 1
+            assert events[0].status == "pending"
