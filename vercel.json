@@ -1,6 +1,6 @@
 {
-  "buildCommand": null,
-  "outputDirectory": ".",
+  "buildCommand": "node -e \"const fs=require('fs');fs.mkdirSync('.vercel/output',{recursive:true});fs.copyFileSync('index.html','.vercel/output/index.html');fs.cpSync('assets','.vercel/output/assets',{recursive:true});fs.cpSync('api','.vercel/output/api',{recursive:true})\"",
+  "outputDirectory": ".vercel/output",
   "framework": null,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/proxy" },
