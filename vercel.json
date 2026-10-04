@@ -1,6 +1,6 @@
 {
-  "buildCommand": null,
-  "outputDirectory": ".",
+  "buildCommand": "node build.mjs",
+  "outputDirectory": ".vercel/output",
   "framework": null,
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/proxy" },
