@@ -1,0 +1,11 @@
+/openapi.json
+/docs
+/docs/oauth2-redirect
+/redoc
+/api/health
+/api/auth/login
+/api/auth/change-password
+
+
+
+

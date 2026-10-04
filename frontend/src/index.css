@@ -1,0 +1,181 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+body {
+  background-color: #0a0a0f;
+  color: #e5e7eb;
+}
+
+.markdown-preview h1 { font-size: 1.5rem; font-weight: 700; margin: 1.5rem 0 0.75rem; color: #f3f4f6; }
+.markdown-preview h2 { font-size: 1.25rem; font-weight: 600; margin: 1.25rem 0 0.5rem; color: #f3f4f6; }
+.markdown-preview h3 { font-size: 1.1rem; font-weight: 600; margin: 1rem 0 0.5rem; color: #e5e7eb; }
+.markdown-preview p { margin: 0.5rem 0; line-height: 1.7; }
+.markdown-preview ul { list-style: disc; padding-left: 1.5rem; margin: 0.5rem 0; }
+.markdown-preview ol { list-style: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
+.markdown-preview li { margin: 0.25rem 0; line-height: 1.6; }
+.markdown-preview code { background: #1f2937; padding: 0.125rem 0.375rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 0.875rem; color: #fbbf24; }
+.markdown-preview pre { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+.markdown-preview pre code { background: none; padding: 0; color: #e5e7eb; font-size: 0.8125rem; }
+.markdown-preview blockquote { border-left: 3px solid #3b82f6; padding-left: 1rem; margin: 1rem 0; color: #9ca3af; font-style: italic; }
+.markdown-preview a { color: #60a5fa; text-decoration: underline; }
+.markdown-preview strong { color: #f9fafb; }
+.markdown-preview hr { border-color: #1f2937; margin: 1.5rem 0; }
+.markdown-preview table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+.markdown-preview th, .markdown-preview td { border: 1px solid #1f2937; padding: 0.5rem 0.75rem; text-align: left; }
+.markdown-preview th { background: #111827; font-weight: 600; }
+.markdown-preview img { max-width: 100%; border-radius: 8px; margin: 0.5rem 0; }
+
+.code-block-wrapper { position: relative; }
+.code-copy-btn { position: absolute; top: 0.5rem; right: 0.5rem; background: #1f2937; border: 1px solid #374151; color: #9ca3af; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: all 0.15s; }
+.code-copy-btn:hover { background: #374151; color: #e5e7eb; }
+
+.tag-badge { display: inline-flex; align-items: center; background: #1e1b4b; color: #a5b4fc; padding: 0.125rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; margin: 0.125rem; border: 1px solid #312e81; }
+
+.entry-card { transition: background 0.15s, border-color 0.15s; }
+.entry-card:hover { background: #111827; border-color: #374151; }
+
+/* Smart text highlighting */
+.markdown-preview .pwd-highlight {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin: 0 2px;
+}
+
+/* Credential row styling */
+.cred-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+/* Copy button in text */
+.smart-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  background: #1f2937;
+  color: #9ca3af;
+  margin-left: 4px;
+}
+.smart-copy-btn:hover { background: #374151; color: #e5e7eb; }
+.smart-copy-btn.copied { background: #065f46; color: #34d399; }
+
+/* Password badge */
+.pwd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  margin: 0 2px;
+}
+
+/* IP badge */
+.ip-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  color: #93c5fd;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  margin: 0 2px;
+}
+
+/* URL link */
+.url-link {
+  color: #c084fc;
+  text-decoration: underline;
+  text-decoration-color: rgba(192, 132, 252, 0.4);
+  text-underline-offset: 2px;
+}
+.url-link:hover { color: #d8b4fe; }
+
+/* Email */
+.email-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: #fde68a;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  margin: 0 2px;
+}
+
+/* Login badge */
+.login-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  margin: 0 2px;
+}
+
+/* Quick action bar on cards */
+.card-actions {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.entry-card:hover .card-actions {
+  opacity: 1;
+}
+
+/* Toast notification */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  border: 1px solid #374151;
+  color: #e5e7eb;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 9999;
+  animation: toast-in 0.2s ease, toast-out 0.2s ease 1.8s forwards;
+  pointer-events: none;
+}
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes toast-out { from { opacity: 1; } to { opacity: 0; } }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0a0a0f; }
+::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4b5563; }
