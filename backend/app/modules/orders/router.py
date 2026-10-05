@@ -182,6 +182,63 @@ async def get_status_log(
     ]
 
 
+@customer_router.get("/by-phone", response_model=List[dict])
+async def list_orders_by_phone(
+    phone: str = Query(..., description="Customer phone number"),
+    shop_id: str = Query(..., description="Shop UUID"),
+    limit: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    """Search orders by customer phone (for guest orders)."""
+    import uuid as _uuid
+    phone = phone.strip()
+    shop_uuid = _uuid.UUID(shop_id)
+    result = await db.execute(
+        select(Customer).where(Customer.shop_id == shop_uuid, Customer.phone == phone)
+    )
+    customer = result.scalar_one_or_none()
+    if not customer:
+        return []
+    orders = await OrderService.list_customer_orders(db, customer_id=customer.id, shop_id=shop_uuid, limit=limit)
+    return [
+        {"id": str(o.id), "number": o.number, "status": o.order_status,
+         "total": str(o.total), "qr_code": o.qr_code,
+         "created_at": o.created_at.isoformat()}
+        for o in orders
+    ]
+
+
+@customer_router.get("/by-phone/{order_id}", response_model=dict)
+async def get_order_by_phone(
+    order_id: str,
+    phone: str = Query(..., description="Customer phone number"),
+    shop_id: str = Query(..., description="Shop UUID"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get a specific order by phone (for guest orders)."""
+    import uuid as _uuid
+    phone = phone.strip()
+    shop_uuid = _uuid.UUID(shop_id)
+    order_uuid = _uuid.UUID(order_id)
+    result = await db.execute(
+        select(Customer).where(Customer.shop_id == shop_uuid, Customer.phone == phone)
+    )
+    customer = result.scalar_one_or_none()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Order not found")
+    order = await OrderService.get_order(db, order_id=order_uuid, shop_id=shop_uuid)
+    if not order or order.customer_id != customer.id:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {
+        "id": str(order.id), "number": order.number,
+        "status": order.order_status, "total": str(order.total),
+        "qr_code": order.qr_code,
+        "items": [{"product_name": i.product_name, "qty": str(i.qty),
+                   "unit_price": str(i.unit_price), "subtotal": str(i.subtotal)}
+                  for i in order.items],
+    }
+
+
 @router.post("/qr/scan", response_model=dict)
 async def scan_qr(
     body: dict,

@@ -201,3 +201,57 @@ async def test_fulfillment_created_with_order(client, user_a, shop_a, product_wi
     assert resp.status_code == 200
     logs = resp.json()
     assert any(l["field"] == "order_status" and l["new_value"] == "new" for l in logs)
+
+
+async def test_guest_order_success(client, shop_a, product_with_inventory, wave_a):
+    """Guest order without auth token — uses phone number."""
+    product, inventory = product_with_inventory
+    phone = "+79991234567"
+    resp = await client.post("/api/v1/orders", json={
+        "shop_id": str(shop_a["shop_id"]),
+        "wave_id": str(wave_a["wave_id"]),
+        "customer_phone": phone,
+        "customer_name": "Test Guest",
+        "items": [{"product_id": str(product.id), "qty": 2}],
+    })
+    assert resp.status_code == 201, resp.text
+    data = resp.json()
+    assert data["status"] == "new"
+    assert data["qr_code"].startswith("QR-")
+    order_id = data["id"]
+
+    # Should be retrievable by phone
+    resp = await client.get(f"/api/v1/orders/by-phone", params={
+        "phone": phone, "shop_id": str(shop_a["shop_id"])
+    })
+    assert resp.status_code == 200
+    phones_orders = resp.json()
+    assert len(phones_orders) >= 1
+    assert any(o["id"] == order_id for o in phones_orders)
+
+    # Should be retrievable by order_id + phone
+    resp = await client.get(f"/api/v1/orders/by-phone/{order_id}", params={
+        "phone": phone, "shop_id": str(shop_a["shop_id"])
+    })
+    assert resp.status_code == 200
+    assert resp.json()["id"] == order_id
+
+
+async def test_guest_order_requires_phone(client, shop_a, product_with_inventory, wave_a):
+    """Guest order without phone should fail."""
+    product, inventory = product_with_inventory
+    resp = await client.post("/api/v1/orders", json={
+        "shop_id": str(shop_a["shop_id"]),
+        "wave_id": str(wave_a["wave_id"]),
+        "items": [{"product_id": str(product.id), "qty": 1}],
+    })
+    assert resp.status_code == 422
+
+
+async def test_guest_order_by_phone_not_found(client, shop_a):
+    """Phone with no orders returns empty list."""
+    resp = await client.get("/api/v1/orders/by-phone", params={
+        "phone": "+79990000000", "shop_id": str(shop_a["shop_id"])
+    })
+    assert resp.status_code == 200
+    assert resp.json() == []
