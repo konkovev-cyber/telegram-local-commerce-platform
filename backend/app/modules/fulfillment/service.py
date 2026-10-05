@@ -7,6 +7,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.fulfillment.models import AssemblyItem
+from app.modules.catalog.models import Unit
 from app.modules.audit.service import write_audit
 
 
@@ -90,9 +91,9 @@ class FulfillmentService:
             if product:
                 item.product_name = product.name
                 if product.unit_id:
-                    u_stmt = select(__import__('app.modules.catalog.models', fromlist=['Unit']).Unit).where(
-                        __import__('app.modules.catalog.models', fromlist=['Unit']).Unit.id == product.unit_id,
-                        __import__('app.modules.catalog.models', fromlist=['Unit']).Unit.shop_id == shop_id,
+                    u_stmt = select(Unit).where(
+                        Unit.id == product.unit_id,
+                        Unit.shop_id == shop_id,
                     )
                     u_res = await session.execute(u_stmt)
                     unit = u_res.scalar_one_or_none()

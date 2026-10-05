@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Header, Request
@@ -163,7 +164,7 @@ async def create_payment(
             shop_id=shop.id,
             order_id=uuid.UUID(body["order_id"]),
             method=body.get("method", "cash"),
-            amount=__import__('decimal').Decimal(str(body.get("amount", "0"))),
+            amount=Decimal(str(body.get("amount", "0"))),
             currency=body.get("currency", "RUB"),
             idempotency_key=idempotency_key,
         )

@@ -119,9 +119,8 @@ async def deliver_order(
 
     # Accept cash payment if needed
     if body.get("accept_cash", False):
-        pay_stmt = select(__import__('app.modules.payments.models', fromlist=['Payment']).Payment).where(
-            __import__('app.modules.payments.models', fromlist=['Payment']).Payment.order_id == order_uuid
-        )
+        from app.modules.payments.models import Payment
+        pay_stmt = select(Payment).where(Payment.order_id == order_uuid)
         pay_res = await db.execute(pay_stmt)
         payment = pay_res.scalar_one_or_none()
         if payment and payment.method == "cash" and payment.status in ("unpaid", "pending"):
@@ -138,10 +137,10 @@ async def deliver_order(
             "fulfillment_status": fulfillment.status,
             "delivered_at": fulfillment.delivered_at.isoformat(),
         }
+    from datetime import datetime as _dt, timezone as _tz
     fulfillment.status = "delivered"
-    fulfillment.delivered_at = __import__('datetime').datetime.now(__import__('datetime').timezone.utc)
-    from datetime import datetime as _dt
-    fulfillment.updated_at = _dt.now(__import__('datetime').timezone.utc)
+    fulfillment.delivered_at = _dt.now(_tz.utc)
+    fulfillment.updated_at = _dt.now(_tz.utc)
 
     # Update order status
     if order.order_status == "new":

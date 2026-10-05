@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -47,8 +48,8 @@ async def create_campaign(
         raise HTTPException(status_code=422, detail="name is required")
     campaign = await CampaignService.create(
         db, shop_id=shop.id, name=name,
-        starts_at=__import__('datetime').datetime.fromisoformat(body["starts_at"]) if body.get("starts_at") else None,
-        ends_at=__import__('datetime').datetime.fromisoformat(body["ends_at"]) if body.get("ends_at") else None,
+        starts_at=datetime.fromisoformat(body["starts_at"]) if body.get("starts_at") else None,
+        ends_at=datetime.fromisoformat(body["ends_at"]) if body.get("ends_at") else None,
         is_active=body.get("is_active", True),
     )
     await db.commit()
