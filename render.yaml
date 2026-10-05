@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: kvartal-backend
+    env: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install -e "./backend[dev]"
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql+asyncpg://postgres:SBjSm9MWgV4xFsXO@db.xwlikymgiyrnsrrrzxxq.supabase.co:5432/postgres
+      - key: SECRET_KEY
+        value: ab-KRwRi8x73QozNA8FTwB6mraQQxA5ZZBZaXAP0-S7nouPEz0F8m82DEd-sxNfQ
+      - key: TOKEN_ENCRYPTION_KEY
+        value: _PHBqIrVWRcPPPoC5zcVGViTkZkk7irj5Ipr4-3TekI=
+      - key: PLATFORM_BOT_TOKEN
+        value: 8206229956:AAGem6lYxoE_C5Q0XacMRZ-C1XWEHpk-jOM
+      - key: TELEGRAM_BOT_SECRET
+        value: test-bot-secret-string
+      - key: REDIS_URL
+        value: redis://localhost:6379/0
