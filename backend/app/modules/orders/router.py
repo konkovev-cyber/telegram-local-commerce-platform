@@ -4,7 +4,10 @@ from decimal import Decimal
 from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Header
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.modules.auth.models import Customer
 
 from app.core.db import get_db
 from app.modules.auth.dependencies import get_shop_context, get_current_user
@@ -203,25 +206,49 @@ async def scan_qr(
 @customer_router.post("", status_code=status.HTTP_201_CREATED, response_model=dict)
 async def create_order(
     body: dict,
-    current_user = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     idempotency_key: Optional[str] = Header(None, alias="Idempotency-Key"),
+    authorization: Optional[str] = Header(None, alias="Authorization"),
 ):
-    """Create an order for the current customer."""
+    """Create an authenticated or guest cash order."""
+    shop_id = uuid.UUID(body["shop_id"])
+    customer_id = None
+    current_user = None
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            from fastapi.security import HTTPAuthorizationCredentials
+            current_user = await get_current_user(
+                HTTPAuthorizationCredentials(scheme="Bearer", credentials=authorization[7:])
+            )
+        except HTTPException:
+            current_user = None
+
+    if current_user is None:
+        phone = str(body.get("customer_phone", "")).strip()
+        name = str(body.get("customer_name", "Гость")).strip() or "Гость"
+        if not phone:
+            raise HTTPException(status_code=422, detail="customer_phone is required")
+        result = await db.execute(select(Customer).where(Customer.shop_id == shop_id, Customer.phone == phone))
+        customer = result.scalar_one_or_none()
+        if customer is None:
+            customer = Customer(
+                id=uuid.uuid4(), shop_id=shop_id, display_name=name, phone=phone,
+                total_orders=0, total_spent=Decimal("0"), avg_order_value=Decimal("0"),
+            )
+            db.add(customer)
+            await db.flush()
+        customer_id = customer.id
+
     try:
         order = await OrderService.create(
-            db,
-            shop_id=uuid.UUID(body["shop_id"]),
-            customer_id=None,
+            db, shop_id=shop_id, customer_id=customer_id,
             wave_id=uuid.UUID(body["wave_id"]) if body.get("wave_id") else None,
             zone_id=uuid.UUID(body["zone_id"]) if body.get("zone_id") else None,
             pickup_point_id=uuid.UUID(body["pickup_point_id"]) if body.get("pickup_point_id") else None,
             time_slot_id=uuid.UUID(body["time_slot_id"]) if body.get("time_slot_id") else None,
-            items=body.get("items", []),
-            idempotency_key=idempotency_key,
+            items=body.get("items", []), idempotency_key=idempotency_key,
             discount_amount=Decimal(str(body.get("discount_amount", "0"))),
-            notes=body.get("notes"),
-            current_user=current_user,
+            notes=body.get("notes"), current_user=current_user,
         )
     except WaveNotCollectingError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -231,11 +258,8 @@ async def create_order(
         raise HTTPException(status_code=400, detail=str(e))
 
     await db.commit()
-    return {
-        "id": str(order.id), "number": order.number,
-        "status": order.order_status, "total": str(order.total),
-        "qr_code": order.qr_code,
-    }
+    return {"id": str(order.id), "number": order.number, "status": order.order_status,
+            "total": str(order.total), "qr_code": order.qr_code}
 
 
 @customer_router.get("/my", response_model=List[dict])

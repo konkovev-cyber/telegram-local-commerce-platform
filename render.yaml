@@ -9,14 +9,14 @@ services:
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        value: postgresql+asyncpg://postgres:SBjSm9MWgV4xFsXO@db.xwlikymgiyrnsrrrzxxq.supabase.co:5432/postgres
+        value: postgresql+asyncpg://postgres:postgres@localhost:5432/postgres
       - key: SECRET_KEY
-        value: ab-KRwRi8x73QozNA8FTwB6mraQQxA5ZZBZaXAP0-S7nouPEz0F8m82DEd-sxNfQ
+        generateValue: true
       - key: TOKEN_ENCRYPTION_KEY
-        value: _PHBqIrVWRcPPPoC5zcVGViTkZkk7irj5Ipr4-3TekI=
+        generateValue: true
       - key: PLATFORM_BOT_TOKEN
-        value: 8206229956:AAGem6lYxoE_C5Q0XacMRZ-C1XWEHpk-jOM
+        value: ""
       - key: TELEGRAM_BOT_SECRET
-        value: test-bot-secret-string
+        value: ""
       - key: REDIS_URL
         value: redis://localhost:6379/0

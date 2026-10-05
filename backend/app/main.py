@@ -40,7 +40,10 @@ app = FastAPI(
 app.add_middleware(TraceIDMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://gkoffice40.duckdns.org",
+        "https://kvartal-admin.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
